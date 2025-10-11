@@ -13,5 +13,5 @@
     "moduleResolution": "node"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["backend-auth/node_modules", "dist"]
 }
