@@ -1,45 +1,58 @@
-import express, { Application } from 'express';
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
-import logger from './config/logger';
-import routes from './routes';
-import errorHandler from './middleware/errorHandler';
+import authRoutes from './routes/auth.routes';
 
-dotenv.config();
+const app = express();
 
-const app: Application = express();
-
+// Middlewares de sécurité
 app.use(helmet());
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true
+}));
 
+// Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX || '100'),
-  message: 'Too many requests from this IP',
+  message: 'Trop de requêtes, veuillez réessayer plus tard'
 });
+
 app.use('/api/', limiter);
 
+// Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.path}`);
-  next();
+// Routes - IMPORTANT: Avant le gestionnaire 404
+app.use('/api/auth', authRoutes);
+
+// Route de test
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
-app.use('/api', routes);
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Une erreur est survenue'
+  });
 });
 
-app.use(errorHandler);
+// 404 handler - DOIT ÊTRE EN DERNIER
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route non trouvée'
+  });
+});
 
 export default app;
