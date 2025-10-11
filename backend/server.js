@@ -6,6 +6,7 @@ import securityRoutes from './routes/securityRoutes.js';
 import seoRoutes from './routes/seoRoutes.js';
 import trackingRoutes from './routes/trackingRoutes.js';
 import accessibilityRoutes from './routes/accessibilityRoutes.js';
+import uxRoutes from './routes/uxRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -18,6 +19,7 @@ app.use('/api', securityRoutes)
 app.use('/api', seoRoutes);
 app.use('/api', trackingRoutes);
 app.use('/api', accessibilityRoutes);
+app.use('/api', uxRoutes);
 
 
 const PORT = process.env.PORT || 5000;
