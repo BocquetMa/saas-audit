@@ -44,6 +44,7 @@ export const run = async (url, formFactor = 'desktop') => {
         const lhResult = await lighthouse(url, config);
         const lhr = lhResult.lhr;
 
+        // Extraction des scores
         const scores = {
             performance: Math.round((lhr.categories.performance?.score || 0) * 100),
             accessibility: Math.round((lhr.categories.accessibility?.score || 0) * 100),
@@ -56,6 +57,7 @@ export const run = async (url, formFactor = 'desktop') => {
             (scores.performance + scores.accessibility + scores.bestPractices + scores.seo) / 4
         );
 
+        // Extraction des métriques Core Web Vitals et autres
         const metrics = {
             lcp: {
                 value: lhr.audits['largest-contentful-paint']?.numericValue || 0,
@@ -107,6 +109,7 @@ export const run = async (url, formFactor = 'desktop') => {
             }
         };
 
+        // Extraction des données de ressources
         const resources = {
             images: extractResourceData(lhr.audits['uses-optimized-images']),
             fonts: extractResourceData(lhr.audits['font-display']),
@@ -120,14 +123,19 @@ export const run = async (url, formFactor = 'desktop') => {
             }
         };
 
+        // Extraction des opportunités d'optimisation
         const opportunities = extractOpportunities(lhr);
 
+        // Extraction des diagnostics
         const diagnostics = extractDiagnostics(lhr);
 
+        // Extraction des problèmes par priorité
         const issues = extractIssues(lhr);
 
+        // Génération des recommandations
         const recommendations = generateRecommendations(scores, metrics, opportunities);
 
+        // Données techniques détaillées
         const technical = {
             renderBlocking: {
                 css: lhr.audits['render-blocking-resources']?.details?.items?.filter(
@@ -153,11 +161,13 @@ export const run = async (url, formFactor = 'desktop') => {
             }
         };
         
+        // Captures d'écran
         const screenshots = {
             final: lhr.audits['final-screenshot']?.details?.data || null,
             filmstrip: lhr.audits['screenshot-thumbnails']?.details?.items || []
         };
 
+        // Benchmarks de performance
         const benchmarks = {
             isGood: metrics.lcp.value < 2500 && metrics.fid.value < 100 && metrics.cls.value < 0.1,
             isMedium: metrics.lcp.value < 4000 && metrics.fid.value < 300 && metrics.cls.value < 0.25,
@@ -190,6 +200,7 @@ export const run = async (url, formFactor = 'desktop') => {
     }
 };
 
+// Fonction pour attribuer une note en fonction du score
 function getGrade(score) {
     if (score >= 0.9) return 'A';
     if (score >= 0.8) return 'B';
@@ -198,6 +209,7 @@ function getGrade(score) {
     return 'F';
 }
 
+// Fonction pour extraire les données de ressources
 function extractResourceData(audit) {
     if (!audit) return { score: 0, items: [] };
 
@@ -214,6 +226,7 @@ function extractResourceData(audit) {
     };
 }
 
+// Fonction pour extraire les données tierces
 function extractThirdPartyData(audit) {
     if (!audit) return { score: 0, summary: null, items: [] };
 
@@ -231,6 +244,7 @@ function extractThirdPartyData(audit) {
     };
 }
 
+// Fonction pour extraire les opportunités d'optimisation
 function extractOpportunities(lhr) {
     const opportunityAudits = [
         'uses-optimized-images',
@@ -274,6 +288,7 @@ function extractOpportunities(lhr) {
         .sort((a, b) => a.score - b.score);
 }
 
+// Fonction pour extraire les diagnostics
 function extractDiagnostics(lhr) {
     const diagnosticAudits = [
         'font-display',
@@ -309,6 +324,7 @@ function extractDiagnostics(lhr) {
         .filter(Boolean);
 }
 
+// Fonction pour extraire les problèmes par priorité
 function extractIssues(lhr) {
     const issues = {
         critical: [],
@@ -341,6 +357,7 @@ function extractIssues(lhr) {
     return issues;
 }
 
+// Fonction pour déterminer le niveau d'impact
 function getImpactLevel(score) {
     if (score < 0.3) return 'critical';
     if (score < 0.5) return 'high';
@@ -348,9 +365,11 @@ function getImpactLevel(score) {
     return 'low';
 }
 
+// Fonction pour générer des recommandations personnalisées
 function generateRecommendations(scores, metrics, opportunities) {
     const recommendations = [];
 
+    // Recommandations Core Web Vitals
     if (metrics.lcp.value > 4000) {
         recommendations.push({
             priority: 'critical',
@@ -400,6 +419,7 @@ function generateRecommendations(scores, metrics, opportunities) {
         });
     }
 
+    // Recommandations basées sur les opportunités
     opportunities.slice(0, 5).forEach(opp => {
         if (opp.savings.time > 1000 || opp.savings.bytes > 100000) {
             recommendations.push({
@@ -414,6 +434,7 @@ function generateRecommendations(scores, metrics, opportunities) {
         }
     });
 
+    // Recommandations d'accessibilité
     if (scores.accessibility < 70) {
         recommendations.push({
             priority: 'high',
@@ -431,6 +452,7 @@ function generateRecommendations(scores, metrics, opportunities) {
         });
     }
 
+    // Recommandations SEO
     if (scores.seo < 80) {
         recommendations.push({
             priority: 'medium',
@@ -454,6 +476,7 @@ function generateRecommendations(scores, metrics, opportunities) {
     });
 }
 
+// Fonction pour estimer l'effort requis
 function estimateEffort(auditId) {
     const lowEffort = ['font-display', 'uses-text-compression', 'uses-rel-preconnect', 'meta-description'];
     const highEffort = ['unused-javascript', 'legacy-javascript', 'critical-request-chains', 'duplicated-javascript'];
@@ -463,11 +486,14 @@ function estimateEffort(auditId) {
     return 'medium';
 }
 
+// Fonction pour calculer le score de compétitivité
 function calculateCompetitiveScore(scores, metrics) {
     let competitiveScore = 0;
 
+    // Score de performance (40%)
     competitiveScore += (scores.performance / 100) * 40;
 
+    // Score Core Web Vitals (30%)
     const cwvScore = (
         (metrics.lcp.value < 2500 ? 1 : metrics.lcp.value < 4000 ? 0.5 : 0) +
         (metrics.fid.value < 100 ? 1 : metrics.fid.value < 300 ? 0.5 : 0) +
@@ -475,15 +501,19 @@ function calculateCompetitiveScore(scores, metrics) {
     ) / 3;
     competitiveScore += cwvScore * 30;
 
+    // Score SEO (15%)
     competitiveScore += (scores.seo / 100) * 15;
 
+    // Score accessibilité (10%)
     competitiveScore += (scores.accessibility / 100) * 10;
 
+    // Score best practices (5%)
     competitiveScore += (scores.bestPractices / 100) * 5;
 
     return Math.round(competitiveScore);
 }
 
+// Export des fonctions utilitaires
 export {
     getGrade,
     extractResourceData,

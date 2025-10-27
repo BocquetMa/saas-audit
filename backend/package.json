@@ -1,27 +1,27 @@
 {
-  "name": "web-audit-backend",
+  "name": "web-audit-api",
   "version": "1.0.0",
   "type": "module",
+  "description": "API pour l'audit complet de sites web",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@axe-core/puppeteer": "^4.10.2",
-    "axios": "^1.7.0",
-    "chrome-launcher": "^1.2.1",
     "cors": "^2.8.5",
     "dns": "^0.2.2",
     "dotenv": "^16.3.1",
     "express": "^4.21.2",
     "lighthouse": "^10.4.0",
-    "node-fetch": "^2.7.0",
+    "node-fetch": "^3.3.2",
     "node-html-parser": "^7.0.1",
-    "puppeteer": "^21.11.0",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "whois-json": "^2.0.4"
+    "puppeteer": "^21.11.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
