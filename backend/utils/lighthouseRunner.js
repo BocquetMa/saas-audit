@@ -1,5 +1,5 @@
-import lighthouse from 'lighthouse';
 import puppeteer from 'puppeteer';
+import lighthouse from 'lighthouse';
 import { URL } from 'url';
 
 /**
@@ -20,12 +20,12 @@ export const run = async (url, formFactor = 'desktop') => {
             '--no-zygote',
             '--single-process',
             '--disable-gpu'
-        ],
+        ]
     });
 
     try {
         const { port } = new URL(browser.wsEndpoint());
-        
+
         const config = {
             port,
             output: 'json',
@@ -75,7 +75,6 @@ export const run = async (url, formFactor = 'desktop') => {
                 score: lhr.audits['cumulative-layout-shift']?.score || 0,
                 grade: getGrade(lhr.audits['cumulative-layout-shift']?.score)
             },
-            
             fcp: {
                 value: lhr.audits['first-contentful-paint']?.numericValue || 0,
                 displayValue: lhr.audits['first-contentful-paint']?.displayValue || 'N/A',
@@ -153,7 +152,7 @@ export const run = async (url, formFactor = 'desktop') => {
                 details: lhr.audits['dom-size']?.details || {}
             }
         };
-
+        
         const screenshots = {
             final: lhr.audits['final-screenshot']?.details?.data || null,
             filmstrip: lhr.audits['screenshot-thumbnails']?.details?.items || []
@@ -182,7 +181,7 @@ export const run = async (url, formFactor = 'desktop') => {
             technical,
             screenshots,
             benchmarks,
-            rawAudits: lhr.audits 
+            rawAudits: lhr.audits
         };
 
     } catch (error) {
@@ -201,31 +200,33 @@ function getGrade(score) {
 
 function extractResourceData(audit) {
     if (!audit) return { score: 0, items: [] };
-    
+
     return {
         score: audit.score || 0,
-        savings: audit.numericValue || 0,
-        displayValue: audit.displayValue || 'N/A',
-        items: (audit.details?.items || []).map(item => ({
+        displayValue: audit.displayValue || '',
+        numericValue: audit.numericValue || 0,
+        items: (audit.details?.items || []).slice(0, 10).map(item => ({
             url: item.url,
-            size: item.totalBytes || item.wastedBytes || 0,
-            wastedPercentage: item.wastedPercent || 0,
-            wastedTime: item.wastedMs || 0
+            wastedBytes: item.wastedBytes || 0,
+            wastedMs: item.wastedMs || 0,
+            totalBytes: item.totalBytes || 0
         }))
     };
 }
 
 function extractThirdPartyData(audit) {
-    if (!audit || !audit.details) return { total: 0, items: [] };
-    
+    if (!audit) return { score: 0, summary: null, items: [] };
+
     return {
-        total: audit.details.items?.length || 0,
-        mainThreadTime: audit.numericValue || 0,
-        items: (audit.details.items || []).slice(0, 10).map(item => ({
-            entity: item.entity?.text || 'Unknown',
-            mainThreadTime: item.mainThreadTime || 0,
+        score: audit.score || 0,
+        displayValue: audit.displayValue || '',
+        summary: audit.details?.summary || null,
+        items: (audit.details?.items || []).map(item => ({
+            entity: item.entity?.name || item.entity || 'Unknown',
+            transferSize: item.transferSize || 0,
             blockingTime: item.blockingTime || 0,
-            transferSize: item.transferSize || 0
+            mainThreadTime: item.mainThreadTime || 0,
+            urls: item.subItems?.items?.map(subItem => subItem.url) || []
         }))
     };
 }
@@ -235,27 +236,26 @@ function extractOpportunities(lhr) {
         'uses-optimized-images',
         'uses-webp-images',
         'offscreen-images',
-        'unminified-css',
-        'unminified-javascript',
         'unused-css-rules',
         'unused-javascript',
+        'modern-image-formats',
+        'uses-text-compression',
         'uses-responsive-images',
         'efficient-animated-content',
         'duplicated-javascript',
         'legacy-javascript',
-        'uses-text-compression',
-        'uses-rel-preconnect',
-        'server-response-time',
-        'redirects',
-        'uses-rel-preload',
-        'total-byte-weight'
+        'preload-lcp-image',
+        'unminified-css',
+        'unminified-javascript',
+        'reduce-unused-rules',
+        'server-response-time'
     ];
 
     return opportunityAudits
         .map(auditId => {
             const audit = lhr.audits[auditId];
-            if (!audit || audit.score >= 0.9) return null;
-            
+            if (!audit || audit.score === 1) return null;
+
             return {
                 id: auditId,
                 title: audit.title,
@@ -296,7 +296,7 @@ function extractDiagnostics(lhr) {
         .map(auditId => {
             const audit = lhr.audits[auditId];
             if (!audit) return null;
-            
+
             return {
                 id: auditId,
                 title: audit.title,
@@ -319,7 +319,7 @@ function extractIssues(lhr) {
 
     Object.values(lhr.audits).forEach(audit => {
         if (audit.score === null || audit.score === 1) return;
-        
+
         const issue = {
             title: audit.title,
             description: audit.description,
@@ -384,6 +384,22 @@ function generateRecommendations(scores, metrics, opportunities) {
         });
     }
 
+    if (metrics.fid.value > 300) {
+        recommendations.push({
+            priority: 'critical',
+            category: 'Core Web Vitals',
+            title: 'Réduire le First Input Delay',
+            description: `Votre FID est de ${metrics.fid.displayValue}, ce qui affecte l'interactivité`,
+            actions: [
+                'Diviser les tâches JavaScript longues',
+                'Optimiser le code tiers',
+                'Utiliser un web worker pour les tâches lourdes'
+            ],
+            estimatedImpact: 'high',
+            effort: 'high'
+        });
+    }
+
     opportunities.slice(0, 5).forEach(opp => {
         if (opp.savings.time > 1000 || opp.savings.bytes > 100000) {
             recommendations.push({
@@ -415,6 +431,23 @@ function generateRecommendations(scores, metrics, opportunities) {
         });
     }
 
+    if (scores.seo < 80) {
+        recommendations.push({
+            priority: 'medium',
+            category: 'SEO',
+            title: 'Optimiser pour les moteurs de recherche',
+            description: `Score SEO: ${scores.seo}/100`,
+            actions: [
+                'Ajouter des méta-descriptions',
+                'Optimiser les balises title',
+                'Implémenter les données structurées',
+                'Créer un sitemap XML'
+            ],
+            estimatedImpact: 'medium',
+            effort: 'low'
+        });
+    }
+
     return recommendations.sort((a, b) => {
         const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
         return priorityOrder[a.priority] - priorityOrder[b.priority];
@@ -422,9 +455,9 @@ function generateRecommendations(scores, metrics, opportunities) {
 }
 
 function estimateEffort(auditId) {
-    const lowEffort = ['font-display', 'uses-text-compression', 'uses-rel-preconnect'];
-    const highEffort = ['unused-javascript', 'legacy-javascript', 'critical-request-chains'];
-    
+    const lowEffort = ['font-display', 'uses-text-compression', 'uses-rel-preconnect', 'meta-description'];
+    const highEffort = ['unused-javascript', 'legacy-javascript', 'critical-request-chains', 'duplicated-javascript'];
+
     if (lowEffort.includes(auditId)) return 'low';
     if (highEffort.includes(auditId)) return 'high';
     return 'medium';
@@ -432,22 +465,22 @@ function estimateEffort(auditId) {
 
 function calculateCompetitiveScore(scores, metrics) {
     let competitiveScore = 0;
-    
+
     competitiveScore += (scores.performance / 100) * 40;
-    
+
     const cwvScore = (
         (metrics.lcp.value < 2500 ? 1 : metrics.lcp.value < 4000 ? 0.5 : 0) +
         (metrics.fid.value < 100 ? 1 : metrics.fid.value < 300 ? 0.5 : 0) +
         (metrics.cls.value < 0.1 ? 1 : metrics.cls.value < 0.25 ? 0.5 : 0)
     ) / 3;
     competitiveScore += cwvScore * 30;
-    
+
     competitiveScore += (scores.seo / 100) * 15;
-    
+
     competitiveScore += (scores.accessibility / 100) * 10;
-    
+
     competitiveScore += (scores.bestPractices / 100) * 5;
-    
+
     return Math.round(competitiveScore);
 }
 
