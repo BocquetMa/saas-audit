@@ -7,6 +7,7 @@ import seoRoutes from './routes/seoRoutes.js';
 import trackingRoutes from './routes/trackingRoutes.js';
 import accessibilityRoutes from './routes/accessibilityRoutes.js';
 import uxRoutes from './routes/uxRoutes.js';
+import mobileRoutes from './routes/mobileRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -20,7 +21,7 @@ app.use('/api', seoRoutes);
 app.use('/api', trackingRoutes);
 app.use('/api', accessibilityRoutes);
 app.use('/api', uxRoutes);
-
+app.use('/api', mobileRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
